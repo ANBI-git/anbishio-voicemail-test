@@ -571,11 +571,11 @@ def main():
         st.markdown("### 📩 留守電設定")
         enable_voicemail = st.checkbox("留守電メッセージを有効にする", value=True)
 
-        voicemail_text = st.text_area(
-            "留守電メッセージ（日本語）",
-            value="こちらは、アンビシオテクノロジー株式会社と申します。大切なご用件がありますので、折り返し御連絡下さい。宜しくお願い致します。",
-            help="Studio Flow側で {{flow.data.voicemail_text}} を使って再生してください。"
-        )
+        # voicemail_text = st.text_area(
+        #     "留守電メッセージ（日本語）",
+        #     value="こちらは、アンビシオテクノロジー株式会社と申します。大切なご用件がありますので、折り返し御連絡下さい。宜しくお願い致します。",
+        #     help="Studio Flow側で {{flow.data.voicemail_text}} を使って再生してください。"
+        # )
 
         st.markdown("---")
         st.caption("💡 アップロード → 選択 → 発信")
