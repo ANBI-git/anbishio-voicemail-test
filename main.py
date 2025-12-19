@@ -580,14 +580,6 @@ def main():
         st.markdown("---")
         st.caption("💡 アップロード → 選択 → 発信")
 
-        with st.expander("📖 動作説明"):
-            st.markdown("""
-            **通話の流れ（Studio）**
-            1. Streamlit → Studio Execution を作成
-            2. Flow内の Make Outgoing Call (AMD ON) で相手へ発信
-            3. AnsweredBy が human の時だけ Connect Call To でオペレーター接続
-            4. machine/unknown なら Say/Play で留守電を再生し Flow 終了（通話終了）
-            """)
 
     with st.expander("📂 ステップ1：連絡先リストをアップロード", expanded=True):
         st.markdown("""
