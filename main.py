@@ -520,8 +520,9 @@ def main():
     st.markdown("""
     <div class="custom-header">
         <div>
-            <h1>📞 東京山王法律事務所</h1>
+            <h1>📞 Anbishio Inc.</h1>
             <p>ダイレクト接続コールシステム</p>
+
         </div>
     </div>
     """, unsafe_allow_html=True)
