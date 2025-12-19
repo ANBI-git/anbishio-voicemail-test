@@ -568,8 +568,6 @@ def main():
         call_delay = st.slider("通話間隔（秒）", 1, 30, 5)
 
         st.markdown("---")
-        st.markdown("### 📩 留守電設定")
-        enable_voicemail = st.checkbox("留守電メッセージを有効にする", value=True)
 
         # voicemail_text = st.text_area(
         #     "留守電メッセージ（日本語）",
