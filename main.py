@@ -532,11 +532,6 @@ def main():
     with st.sidebar:
         st.markdown("### ⚙️ 設定")
 
-        operator_number = st.text_input(
-            "オペレーター番号（接続先）",
-            value="+815017420037",
-            help="通話を転送するオペレーターの電話番号（E.164形式）"
-        )
 
         flow_sid = st.text_input(
             "Studio Flow SID",
