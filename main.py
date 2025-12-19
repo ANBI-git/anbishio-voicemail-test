@@ -10,7 +10,7 @@ from twilio.base.exceptions import TwilioException
 # PAGE CONFIG
 # =========================
 st.set_page_config(
-    page_title="東京山王法律事務所 - コールシステム",
+    page_title="Anbishio Inc. - コールシステム",
     page_icon="📞",
     layout="wide",
     initial_sidebar_state="expanded"
