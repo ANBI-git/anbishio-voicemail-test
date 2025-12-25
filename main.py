@@ -264,7 +264,7 @@ class TwilioStudioCaller:
             self.client = Client(account_sid, auth_token)
             self.account_sid = account_sid
             self.from_number = from_number
-            self.operator_number = operator_number
+            self.operator_number = operator_number  # can be ""
             self.flow_sid = flow_sid
             self.is_configured = True
         except Exception as e:
@@ -282,7 +282,7 @@ class TwilioStudioCaller:
 
         try:
             params = {
-                "operator_number": self.operator_number,
+                "operator_number": (self.operator_number or ""),  # empty ok
                 "contact_name": person_name or "",
                 "enable_voicemail": bool(enable_voicemail),
                 "voicemail_text": (voicemail_text or "").strip(),
@@ -309,7 +309,6 @@ class TwilioStudioCaller:
 
         def walk(o):
             if isinstance(o, dict):
-                # candidate if it looks like a Make Outgoing Call widget data block
                 call_sid = o.get("CallSid") or o.get("call_sid")
                 call_status = o.get("CallStatus") or o.get("call_status")
                 if call_sid and str(call_sid).startswith("CA"):
@@ -325,7 +324,6 @@ class TwilioStudioCaller:
         if not candidates:
             return None
 
-        # Prefer candidate whose "To" equals expected_to
         for c in candidates:
             to_val = c.get("To") or c.get("to")
             if to_val and expected_to and str(to_val).strip() == expected_to.strip():
@@ -351,7 +349,6 @@ class TwilioStudioCaller:
                 answered_by = widget_block.get("AnsweredBy") or widget_block.get("answered_by")
                 return True, (call_status or "unknown"), call_sid, answered_by, (execution_status or "unknown")
 
-            # If we can't see CallStatus yet, fallback to execution status
             return True, "queued" if execution_status == "active" else (execution_status or "unknown"), None, None, (execution_status or "unknown")
 
         except Exception as e:
@@ -442,10 +439,6 @@ def _make_pause_snapshot_csv():
     return df.to_csv(index=False).encode('utf-8')
 
 def poll_call_until_complete(twilio_caller: TwilioStudioCaller, execution_sid, contact, delay_between_calls):
-    """
-    Poll Studio Execution Context until the call finishes.
-    We map widget CallStatus (completed/failed/no-answer/busy/etc.) to the UI.
-    """
     terminal_statuses = {'completed', 'failed', 'busy', 'no-answer', 'canceled', 'ended'}
     status_display = st.empty()
     current_status = "queued"
@@ -473,7 +466,6 @@ def poll_call_until_complete(twilio_caller: TwilioStudioCaller, execution_sid, c
         if current_status in terminal_statuses:
             break
 
-        # If execution ended but we didn't see a final call status yet
         if exec_status == "ended":
             break
 
@@ -514,7 +506,7 @@ def poll_call_until_complete(twilio_caller: TwilioStudioCaller, execution_sid, c
         st.rerun()
 
 # =========================
-# MAIN APP (UNCHANGED except caller)
+# MAIN APP
 # =========================
 def main():
     st.markdown("""
@@ -522,22 +514,53 @@ def main():
         <div>
             <h1>📞 Anbishio Inc.</h1>
             <p>ダイレクト接続コールシステム</p>
-
         </div>
     </div>
     """, unsafe_allow_html=True)
 
     DEFAULT_FLOW_SID = "FW60b500e1fce67938a577fdc5d70436cc"
 
+    # ---- FIX: define these so they are NEVER undefined ----
+    operator_number = ""      # forwarding number (optional)
+    enable_voicemail = False  # default off
+    voicemail_text = ""       # default empty
+
     with st.sidebar:
         st.markdown("### ⚙️ 設定")
-
 
         flow_sid = st.text_input(
             "Studio Flow SID",
             value=DEFAULT_FLOW_SID,
             help="Twilio Studio Flow SID（FW...）"
         )
+
+        # Forward number (optional). Pull default from secrets if present.
+        operator_number_default = ""
+        try:
+            if "twilio" in st.secrets and "operator_number" in st.secrets["twilio"]:
+                operator_number_default = st.secrets["twilio"]["operator_number"]
+            elif "operator_number" in st.secrets:
+                operator_number_default = st.secrets["operator_number"]
+        except Exception:
+            operator_number_default = ""
+
+        operator_number = st.text_input(
+            "👤 転送先番号（任意）",
+            value=operator_number_default,
+            placeholder="例: +819012345678（空でもOK）",
+            help="転送しない場合は空欄でOK（Flow側も空欄を許容する作りにしてください）"
+        ).strip()
+
+        enable_voicemail = st.checkbox("📮 留守電を有効にする", value=False)
+
+        if enable_voicemail:
+            voicemail_text = st.text_area(
+                "留守電メッセージ（日本語）",
+                value="こちらは、アンビシオテクノロジー株式会社と申します。大切なご用件がありますので、折り返し御連絡下さい。宜しくお願い致します。",
+                help="Studio Flow側で {{flow.data.voicemail_text}} を使って再生してください。"
+            )
+        else:
+            voicemail_text = ""
 
         twilio_caller = None
         try:
@@ -555,7 +578,7 @@ def main():
             if twilio_caller.is_configured:
                 st.success("✅ Twilio 接続済み")
                 st.info(f"📱 発信元: {from_number}")
-                st.info(f"👤 転送先: {operator_number}")
+                st.info(f"👤 転送先: {operator_number if operator_number else '（未設定）'}")
                 st.info(f"🧩 Flow: {flow_sid}")
             else:
                 st.error("❌ Twilio 設定エラー")
@@ -568,16 +591,7 @@ def main():
         call_delay = st.slider("通話間隔（秒）", 1, 30, 5)
 
         st.markdown("---")
-
-        # voicemail_text = st.text_area(
-        #     "留守電メッセージ（日本語）",
-        #     value="こちらは、アンビシオテクノロジー株式会社と申します。大切なご用件がありますので、折り返し御連絡下さい。宜しくお願い致します。",
-        #     help="Studio Flow側で {{flow.data.voicemail_text}} を使って再生してください。"
-        # )
-
-        st.markdown("---")
         st.caption("💡 アップロード → 選択 → 発信")
-
 
     with st.expander("📂 ステップ1：連絡先リストをアップロード", expanded=True):
         st.markdown("""
@@ -718,7 +732,7 @@ def main():
                     status = st.session_state.contact_statuses.get(contact['id'], 'waiting')
                     render_contact_card(contact, is_selected, status)
 
-            # ====== CALLING PROCESS (UPDATED to Studio Execution) ======
+            # ====== CALLING PROCESS (Studio Execution) ======
             if (st.session_state.calling_in_progress and
                 st.session_state.call_queue and
                 st.session_state.current_calling_id is None and
